@@ -6,10 +6,34 @@ import serial
 import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
+from unittest.mock import MagicMock
+
+'''
+# Mock Serial object
+class MockSerial(MagicMock):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.port = 'COM99'  # Simulate port number
+        self.baudrate = 9600
+        self.timeout = 0.1
+
+    def open(self):
+        pass
+
+    def close(self):
+        pass
+
+    def write(self, data):
+        print(f"Mock Serial Write: {data}")
+
+    def read(self, size):
+        return b'Mock Serial Data'
+'''
 
 
 # Replace 'COMX' with the actual serial port your Arduino is connected to
 ser = serial.Serial('COM9', 9600, timeout=0.1) 
+#ser = serial.Serial = MockSerial
 
 # Set the position of the window
 #x, y = 4000, 200
@@ -21,7 +45,7 @@ pygame.init()
 
 # Set up the display
 #screen = pygame.display.set_mode((800, 800))
-screen = pygame.display.set_mode((5120, 1440))
+screen = pygame.display.set_mode((800, 800))
 pygame.display.set_caption('Arrow Key Response Test')
 
 # Define colors
@@ -29,7 +53,7 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
 # Define the font
-font = pygame.font.Font(None, 74)
+font = pygame.font.Font(None, 200)
 
 response_directions = []
 response_times = []
@@ -44,35 +68,21 @@ response_window = 2  # Time in seconds to allow responses
 
 # Function to display text
 def display_text(text, colorMode):
+    
     if colorMode == "dark":
         screen.fill(BLACK)
-        text_color = WHITE
+        text_surface = font.render(text, True, WHITE)
     else:
         screen.fill(WHITE)
-        text_color = BLACK
+        text_surface = font.render(text, True, BLACK)
+        
+        
+    # Get the rectangle of the text surface
+    text_rect = text_surface.get_rect()
 
-    # Wrap the text (you can adjust the width as needed)
-    wrapped_text = wrap_text(text, font, screen.get_width() - 40)
-
-    # Render each line of wrapped text
-    wrapped_surfaces = []
-    total_height = 0
-    for line in wrapped_text:
-        text_surface = font.render(line, True, text_color)
-        wrapped_surfaces.append(text_surface)
-        total_height += text_surface.get_height()
-
-    # Calculate top-left corner to center text block on screen
-    text_y = (screen.get_height() - total_height) // 2
-
-    # Blit each line centered horizontally
-    for text_surface in wrapped_surfaces:
-        text_rect = text_surface.get_rect()
-        text_rect.centerx = screen.get_rect().centerx
-        text_rect.top = text_y
-        screen.blit(text_surface, text_rect)
-        text_y += text_rect.height + 5  # Adjust spacing between lines
-
+    # Center the text rectangle on the screen
+    text_rect.center = screen.get_rect().center
+    screen.blit(text_surface, text_rect)
     pygame.display.flip()
 
 def wrap_text(text, font, max_width):
@@ -269,8 +279,13 @@ def main():
         average = 0  # or handle this case as per your requirements
     print("Average response time:", average)
 
+    # Count the number of True values
+    true_count = sum(response_correctness)
 
-    #print(", ".join(response_times))
+    # Calculate the percentage of True values
+    percentage_true = (true_count / len(response_correctness)) * 100
+    print(f"Percentage of correct reponses: {percentage_true}%")
+
 
 if __name__ == "__main__":
     main()
