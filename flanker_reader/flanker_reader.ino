@@ -5,7 +5,7 @@ const int rightButtonPin = 11;
 bool armed = false;
 bool leftButtonPressed = false;
 bool rightButtonPressed = false;
-int triggerThreshold = 35;
+int triggerThreshold = 25;
 
 int leftButtonState = 0;
 int rightButtonState = 0;

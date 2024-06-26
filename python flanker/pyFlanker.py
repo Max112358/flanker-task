@@ -9,19 +9,19 @@ from datetime import datetime
 
 
 # Replace 'COMX' with the actual serial port your Arduino is connected to
-ser = serial.Serial('COM9', 9600, timeout=1)  # Set a timeout of 1 second
+ser = serial.Serial('COM9', 9600, timeout=0.1) 
 
 # Set the position of the window
 #x, y = 4000, 200
-x, y = 4000, 200
+x, y = 0, 0
 os.environ['SDL_VIDEO_WINDOW_POS'] = f"{x},{y}"
 
 # Initialize Pygame
 pygame.init()
 
 # Set up the display
-screen = pygame.display.set_mode((800, 800))
-#screen = pygame.display.set_mode((5120, 1440))
+#screen = pygame.display.set_mode((800, 800))
+screen = pygame.display.set_mode((5120, 1440))
 pygame.display.set_caption('Arrow Key Response Test')
 
 # Define colors
@@ -38,32 +38,73 @@ response_question = []
 
 # Define the text list and corresponding correct responses
 text_list = [(">>>>>", "right"), ("<<><<", "right"), (">><>>", "left"), ("<<<<<", "left"),]
-total_texts = 10
-display_time = 2  # Time in seconds to display each text
+total_texts = 50
+display_time = 0.5  # Time in seconds to show question
+response_window = 2  # Time in seconds to allow responses
 
 # Function to display text
 def display_text(text, colorMode):
-    
     if colorMode == "dark":
         screen.fill(BLACK)
-        text_surface = font.render(text, True, WHITE)
+        text_color = WHITE
     else:
         screen.fill(WHITE)
-        text_surface = font.render(text, True, BLACK)
-        
-        
-    # Get the rectangle of the text surface
-    text_rect = text_surface.get_rect()
+        text_color = BLACK
 
-    # Center the text rectangle on the screen
-    text_rect.center = screen.get_rect().center
-    screen.blit(text_surface, text_rect)
+    # Wrap the text (you can adjust the width as needed)
+    wrapped_text = wrap_text(text, font, screen.get_width() - 40)
+
+    # Render each line of wrapped text
+    wrapped_surfaces = []
+    total_height = 0
+    for line in wrapped_text:
+        text_surface = font.render(line, True, text_color)
+        wrapped_surfaces.append(text_surface)
+        total_height += text_surface.get_height()
+
+    # Calculate top-left corner to center text block on screen
+    text_y = (screen.get_height() - total_height) // 2
+
+    # Blit each line centered horizontally
+    for text_surface in wrapped_surfaces:
+        text_rect = text_surface.get_rect()
+        text_rect.centerx = screen.get_rect().centerx
+        text_rect.top = text_y
+        screen.blit(text_surface, text_rect)
+        text_y += text_rect.height + 5  # Adjust spacing between lines
+
     pygame.display.flip()
+
+def wrap_text(text, font, max_width):
+    words = text.split()
+    wrapped_lines = []
+    current_line = ''
+
+    for word in words:
+        test_line = current_line + ' ' + word if current_line != '' else word
+        test_width, _ = font.size(test_line)
+        if test_width <= max_width:
+            current_line = test_line
+        else:
+            wrapped_lines.append(current_line)
+            current_line = word
+
+    if current_line:
+        wrapped_lines.append(current_line)
+
+    return wrapped_lines
 
 # Function to wait for a key press and check correctness
 def wait_for_key(correct_key):
     start_time = time.time()
-    while time.time() - start_time < display_time:
+    question_visible = True;
+    
+    while time.time() - start_time < response_window:
+        
+        if time.time() - start_time > display_time and question_visible == True:
+            display_text("", "dark")
+            question_visible = False
+        
         handle_events()  # Check for events after each text display and key waiting
         try:
             line = ser.readline()  # Read a line from the serial port with timeout
@@ -130,12 +171,16 @@ def remove_outliers(data):
 def convert_to_floats(mixed_list):
     return [float(item) if isinstance(item, str) else item for item in mixed_list if str(item).replace('.', '').isdigit()]
 
+
 # Main game loop
 def main():
     global response_times, response_directions, response_correctness, response_question
 
     
     correct_responses = 0
+    display_text("Please respond as fast and accurately as possible.", "dark")
+    wait_for_time(5)
+    
 
     for _ in range(total_texts):
         text, correct_key = random.choice(text_list)
