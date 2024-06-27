@@ -1,0 +1,239 @@
+import pygame
+import time
+import random
+import os
+import serial
+import matplotlib.pyplot as plt
+import numpy as np
+import csv
+from datetime import datetime
+
+# Replace 'COMX' with the actual serial port your Arduino is connected to
+ser = serial.Serial('COM6', 9600, timeout=0.1)
+
+# Set the position of the window
+x, y = 0, 0
+os.environ['SDL_VIDEO_WINDOW_POS'] = f"{x},{y}"
+
+# Initialize Pygame
+pygame.init()
+
+# Set up the display
+screen = pygame.display.set_mode((5120, 1440))
+pygame.display.set_caption('Arrow Key Response Test')
+
+# Define colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+
+# Define the font
+font = pygame.font.Font(None, 100)
+
+response_directions = []
+response_times = []
+response_correctness = []
+response_question = []
+response_congruency = []
+
+# Define the text list and corresponding correct responses
+text_list = [
+    (">>>>>", "right", "congruent"),
+    ("<<><<", "right", "not congruent"),
+    (">><>>", "left", "not congruent"),
+    ("<<<<<", "left", "congruent"),
+]
+total_texts = 50
+display_time = 0.5  # Time in seconds to show question
+response_window = 2  # Time in seconds to allow responses
+
+# Function to display text
+def display_text(text, colorMode):
+    screen.fill(BLACK if colorMode == "dark" else WHITE)
+    text_surface = font.render(text, True, WHITE if colorMode == "dark" else BLACK)
+    text_rect = text_surface.get_rect(center=screen.get_rect().center)
+    screen.blit(text_surface, text_rect)
+    pygame.display.flip()
+
+# Function to wait for a key press and check correctness
+def wait_for_key(correct_key):
+    start_time = time.time()
+    question_visible = True
+
+    while time.time() - start_time < response_window:
+
+        if time.time() - start_time > display_time and question_visible == True:
+            display_text("", "dark")
+            question_visible = False
+
+        handle_events()  # Check for events after each text display and key waiting
+        try:
+            line = ser.readline()  # Read a line from the serial port with timeout
+            if line:
+                directionAsString = line.decode("utf-8").strip()  # Decode the bytes to string
+                response_directions.append(directionAsString)
+
+                line = ser.readline()  # Read the next line for time
+                if line:
+                    time_as_string = line.decode("utf-8").strip()  # Decode the bytes to string
+                    microseconds = int(time_as_string)  # Assuming time_as_string is a string representing microseconds
+                    milliseconds = microseconds / 1000  # Convert microseconds to milliseconds
+                    response_times.append(float(milliseconds))  # Store time as float
+
+                if directionAsString == correct_key:
+                    response_correctness.append("correct")
+                else:
+                    response_correctness.append("incorrect")
+                return directionAsString == correct_key
+            time.sleep(0.1)  # Add a small delay to prevent high CPU usage
+        except serial.SerialTimeoutException:
+            # Handle timeout case if needed
+            pass
+
+    response_directions.append("no response")
+    response_correctness.append("incorrect")
+    return False
+
+def wait_for_time(wait_time):
+    start_time = time.time()
+    while time.time() - start_time < wait_time:
+        handle_events()  # Check for events after each text display and key waiting
+        pass  # Do nothing, just wait
+
+    return True  # Return True after waiting
+
+# Function to handle pygame events
+def handle_events():
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            ser.close()
+            exit()
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                pygame.quit()
+                ser.close()
+                exit()
+
+# Function to remove outliers from data
+def remove_outliers(data):
+    if len(data) < 4:
+        return data
+
+    data.sort()
+    q1, q3 = data[len(data) // 4], data[3 * len(data) // 4]
+    iqr = q3 - q1
+    lower_bound = q1 - 5.5 * iqr
+    upper_bound = q3 + 5.5 * iqr
+
+    return [x for x in data if lower_bound <= x <= upper_bound]
+
+# Function to convert mixed list to floats
+def convert_to_floats(mixed_list):
+    return [float(item) if isinstance(item, str) else item for item in mixed_list if str(item).replace('.', '').isdigit()]
+
+# Function to save data to CSV (append mode)
+def save_to_csv(file_name, user_name, questions, directions, congruency, correctness, times):
+    file_exists = os.path.isfile(file_name)
+    with open(file_name, 'a', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        if not file_exists:
+            csvwriter.writerow(["Participant Name", "Question", "Direction", "Congruency", "Correctness", "Response Time (ms)"])
+        for q, d, c, cor, t in zip(questions, directions, congruency, correctness, times):
+            csvwriter.writerow([user_name, q, d, c, cor, t])
+
+# Function to get user's name input
+def get_user_name():
+    user_name = ""
+    input_active = True
+    while input_active:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    input_active = False
+                elif event.key == pygame.K_BACKSPACE:
+                    user_name = user_name[:-1]
+                else:
+                    user_name += event.unicode
+        screen.fill(BLACK)
+        display_text(f"Enter your name: {user_name}", "dark")
+        pygame.display.flip()
+    return user_name
+
+# Main game loop
+def main():
+    global response_times, response_directions, response_correctness, response_question, response_congruency
+
+    # Get user's name input
+    user_name = get_user_name()
+
+    correct_responses = 0
+    display_text("Please respond as fast and accurately as possible.", "dark")
+    wait_for_time(5)
+
+    for _ in range(total_texts):
+        text, correct_key, congruency = random.choice(text_list)
+        response_question.append(text)
+        response_congruency.append(congruency)
+        display_text("+", "light")
+        random_number = random.uniform(1, 2)
+        wait_for_time(random_number)
+        display_text(text, "dark")
+        correct = wait_for_key(correct_key)
+        if correct:
+            correct_responses += 1
+            display_text("Correct", "dark")
+            wait_for_time(0.5)
+        else:
+            display_text("Incorrect", "dark")
+            wait_for_time(0.5)
+
+        handle_events()  # Check for events after each text display and key waiting
+
+    # Display the result
+    screen.fill(BLACK)
+    result_text = f"Correct responses: {correct_responses}/{total_texts}"
+    result_surface = font.render(result_text, True, WHITE)
+    result_rect = result_surface.get_rect(center=screen.get_rect().center)
+    screen.blit(result_surface, result_rect)
+    pygame.display.flip()
+
+    # Wait for a few seconds before closing
+    time.sleep(3)
+
+    pygame.quit()
+
+    # Close the serial port when done
+    ser.close()
+
+    # Save data to CSV
+    response_times = convert_to_floats(response_times)
+    current_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")
+    csv_file_name = f'Flanker_Test_Data.csv'
+    save_to_csv(csv_file_name, user_name, response_question, response_directions, response_congruency, response_correctness, response_times)
+
+    # Generate and save histogram of response times
+    min_time = np.min(response_times)
+    max_time = np.max(response_times)
+    bins = np.linspace(min_time, max_time, 20)  # 20 evenly spaced bins
+    plt.figure(figsize=(10, 6))
+    plt.hist(response_times, bins=bins, edgecolor='black')
+    plt.xlabel('Response Time (ms)')
+    plt.ylabel('Frequency')
+    plt.title('Histogram of Response Times')
+    plt.grid(True)
+    plt.savefig(f'{user_name}_response_times_histogram_{current_datetime}.png')
+
+    # Print additional statistics
+    total_sum = sum(response_times)
+    if len(response_times) > 0:
+        average = total_sum / len(response_times)
+    else:
+        average = 0
+    print("Average response time:", average)
+
+    true_count = response_correctness.count("correct")
+    percentage_true = (true_count / len(response_correctness)) * 100
+    print(f"Percentage of correct responses: {percentage_true}%")
+
+if __name__ == "__main__":
+    main()
