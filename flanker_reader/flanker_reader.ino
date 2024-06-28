@@ -1,11 +1,14 @@
 const int sensorPin = A0;  // Analog pin connected to the phototransistor
-const int leftButtonPin = 8;
-const int rightButtonPin = 11;
+//const int leftButtonPin = 8; //use this for uno r4 wifi
+//const int rightButtonPin = 11; //use this for uno r4 wifi
+
+const int leftButtonPin = 2; //use this for pro micro
+const int rightButtonPin = 3; //use this for pro micro
 
 bool armed = false;
 bool leftButtonPressed = false;
 bool rightButtonPressed = false;
-int triggerThreshold = 25;
+int triggerThreshold = 4;
 
 int leftButtonState = 0;
 int rightButtonState = 0;
@@ -37,6 +40,7 @@ void loop() {
     armed = true;
     photoDetectorTriggeredAt = micros();  // Get the current time in microseconds
     //Serial.println("armed");
+    delay(100);  // Delay for a short while to avoid overwhelming the serial output
   }
 
   // Update the previous state
@@ -47,6 +51,7 @@ void loop() {
     Serial.println("left");
     //Serial.print("reactionTime: ");
     Serial.println(reactionTime);
+    delay(100);  // Delay for a short while to avoid overwhelming the serial output
   }
 
   if (rightButtonPressed) {
@@ -54,9 +59,11 @@ void loop() {
     Serial.println("right");
     //Serial.print("reactionTime: ");
     Serial.println(reactionTime);
+    delay(100);  // Delay for a short while to avoid overwhelming the serial output
   }
 
-  delay(100);  // Delay for a short while to avoid overwhelming the serial output
+  //Serial.println(sensorValue);
+  //delay(10);  // Delay for a short while to avoid overwhelming the serial output
 }
 
 void handleButtonPressLeft() {

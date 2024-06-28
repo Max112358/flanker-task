@@ -32,7 +32,7 @@ class MockSerial(MagicMock):
 
 
 # Replace 'COMX' with the actual serial port your Arduino is connected to
-ser = serial.Serial('COM9', 9600, timeout=0.1) 
+ser = serial.Serial('COM10', 9600, timeout=0.1) 
 #ser = serial.Serial = MockSerial
 
 # Set the position of the window
@@ -45,7 +45,8 @@ pygame.init()
 
 # Set up the display
 #screen = pygame.display.set_mode((800, 800))
-screen = pygame.display.set_mode((800, 800))
+#screen = pygame.display.set_mode((5120, 1440))
+screen = pygame.display.set_mode((5120, 1440))
 pygame.display.set_caption('Arrow Key Response Test')
 
 # Define colors
