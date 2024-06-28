@@ -1,20 +1,21 @@
 const int sensorPin = A0;  // Analog pin connected to the phototransistor
-//const int leftButtonPin = 8; //use this for uno r4 wifi
-//const int rightButtonPin = 11; //use this for uno r4 wifi
+const int leftButtonPin = 8; //use this for uno r4 wifi
+const int rightButtonPin = 11; //use this for uno r4 wifi
 
-const int leftButtonPin = 2; //use this for pro micro
-const int rightButtonPin = 3; //use this for pro micro
+//const int leftButtonPin = 2; //use this for pro micro
+//const int rightButtonPin = 3; //use this for pro micro
 
 bool armed = false;
 bool leftButtonPressed = false;
 bool rightButtonPressed = false;
-int triggerThreshold = 4;
+int triggerThreshold = 40;
 
 int leftButtonState = 0;
 int rightButtonState = 0;
 
-int sensorValue = 0;
-int lastSensorValue = 0;
+const int sensorValueArrayLength = 300;
+int sensorValues[sensorValueArrayLength]; // Array to store the last 10 sensor values
+int sensorIndex = 0;  // Index for the circular buffer
 
 volatile unsigned long photoDetectorTriggeredAt = 0;
 volatile unsigned long reactionTime = 0;
@@ -27,24 +28,31 @@ void setup() {
 
   attachInterrupt(digitalPinToInterrupt(leftButtonPin), handleButtonPressLeft, FALLING);
   attachInterrupt(digitalPinToInterrupt(rightButtonPin), handleButtonPressRight, FALLING);
+
+  // Initialize the sensorValues array with the initial sensor reading
+  int initialSensorValue = analogRead(sensorPin);
+  for (int i = 0; i < sensorValueArrayLength; i++) {
+    sensorValues[i] = initialSensorValue;
+  }
 }
 
 void loop() {
-  sensorValue = analogRead(sensorPin);  // Read the analog value
+  int sensorValue = analogRead(sensorPin);  // Read the analog value
 
-  //int leftButtonValue = digitalRead(leftButtonPin);  // Read the analog value
-  //Serial.println(leftButtonValue);
-
-  // Detect a significant drop in light level
-  if (sensorValue < lastSensorValue - triggerThreshold) {
+  // Check if the new value is threshold less than the oldest value in the buffer
+  if (sensorValue < sensorValues[sensorIndex] - triggerThreshold) {
     armed = true;
     photoDetectorTriggeredAt = micros();  // Get the current time in microseconds
     //Serial.println("armed");
-    delay(100);  // Delay for a short while to avoid overwhelming the serial output
+    for (int i = 0; i < sensorValueArrayLength; i++) {
+      sensorValues[i] = sensorValue;
+    }
+    delay(10);  // Delay for a short while to avoid overwhelming the serial output
   }
 
-  // Update the previous state
-  lastSensorValue = sensorValue;
+  // Update the circular buffer with the new sensor value
+  sensorValues[sensorIndex] = sensorValue;
+  sensorIndex = (sensorIndex + 1) % sensorValueArrayLength;  // Increment index and wrap around using modulo
 
   if (leftButtonPressed) {
     leftButtonPressed = false;

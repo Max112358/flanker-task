@@ -32,7 +32,7 @@ class MockSerial(MagicMock):
 
 
 # Replace 'COMX' with the actual serial port your Arduino is connected to
-ser = serial.Serial('COM10', 9600, timeout=0.1) 
+ser = serial.Serial('COM9', 9600, timeout=0.1) 
 #ser = serial.Serial = MockSerial
 
 # Set the position of the window
