@@ -32,7 +32,7 @@ class MockSerial(MagicMock):
 
 
 # Replace 'COMX' with the actual serial port your Arduino is connected to
-ser = serial.Serial('COM9', 9600, timeout=0.1) 
+ser = serial.Serial('COM5', 9600, timeout=0.1) 
 #ser = serial.Serial = MockSerial
 
 # Set the position of the window
@@ -63,7 +63,7 @@ response_question = []
 
 # Define the text list and corresponding correct responses
 text_list = [(">>>>>", "right"), ("<<><<", "right"), (">><>>", "left"), ("<<<<<", "left"),]
-total_texts = 50
+total_texts = 5
 display_time = 0.5  # Time in seconds to show question
 response_window = 2  # Time in seconds to allow responses
 

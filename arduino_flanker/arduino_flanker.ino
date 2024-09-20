@@ -1,9 +1,9 @@
 const int sensorPin = A0;  // Analog pin connected to the phototransistor
-const int leftButtonPin = 8; //use this for uno r4 wifi
-const int rightButtonPin = 11; //use this for uno r4 wifi
+//const int leftButtonPin = 8; //use this for uno r4 wifi
+//const int rightButtonPin = 11; //use this for uno r4 wifi
 
-//const int leftButtonPin = 2; //use this for pro micro
-//const int rightButtonPin = 3; //use this for pro micro
+const int leftButtonPin = 2; //use this for pro micro
+const int rightButtonPin = 3; //use this for pro micro
 
 bool armed = false;
 bool leftButtonPressed = false;
